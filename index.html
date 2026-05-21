@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stickman Kombat: Overlord Masterpiece</title>
+    <style>
+        body {
+            margin: 0; background: #020204; color: #fff;
+            font-family: 'Impact', Arial, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100vh; overflow: hidden; user-select: none;
+        }
+        #screen-container { position: relative; width: 1000px; height: 500px; }
+        .menu-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(4, 4, 8, 0.98); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+            border: 4px solid #ff0055; box-shadow: inset 0 0 50px #ff0055;
+        }
+        .screen-title { font-size: 38px; color: #ff0055; text-shadow: 0 0 15px #ff0055; margin-bottom: 20px; font-style: italic; letter-spacing: 2px; }
+        .sub-title { font-size: 20px; color: #ffe600; margin-bottom: 15px; }
+        .row-layout { display: flex; gap: 15px; margin-bottom: 25px; }
+        .btn {
+            background: #111; border: 3px solid #333; color: #fff; padding: 15px 30px;
+            font-size: 18px; cursor: pointer; font-family: 'Impact', sans-serif;
+            letter-spacing: 1px; transition: 0.2s;
+        }
+        .btn:hover, .btn.selected { border-color: #ff0055; background: #20000a; transform: scale(1.05); box-shadow: 0 0 20px #ff0055; }
+        #ui-wrapper { width: 1000px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .fighter-hud { width: 35%; display: flex; flex-direction: column; gap: 2px; }
+        #p2-hud { align-items: flex-end; }
+        .name-tag { font-size: 20px; color: #ccc; font-style: italic; }
+        .bar-border { width: 100%; background: #111; border: 2px solid #444; height: 24px; overflow: hidden; }
+        .health-bar { height: 100%; width: 100%; transform-origin: left; background: linear-gradient(90deg, #ff0055, #ff5500); }
+        #p2-hud .health-bar { transform-origin: right; background: linear-gradient(270deg, #ff0055, #ff5500); }
+        .meter-border { width: 65%; background: #05050a; border: 1px solid #333; height: 8px; }
+        .meter-bar { height: 100%; width: 0%; background: #ffe600; }
+        #p2-hud .meter-bar { float: right; }
+        #score-board { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 26%; }
+        #logo { font-size: 34px; color: #ff0055; text-shadow: 0 0 10px #ff0055; font-style: italic; }
+        #wins-display { font-size: 20px; color: #fff; font-weight: bold; margin-top: 2px; }
+        canvas { background: #030305; border: 4px solid #1f1f33; }
+        #announcer-text { font-size: 42px; color: #ffe600; margin-top: 5px; height: 50px; text-shadow: 2px 2px 0 #000; text-align: center; font-style: italic; }
+        .instructions { margin-top: 5px; font-family: monospace; font-size: 11px; color: #555566; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-wrapper">
+        <div id="p1-hud" class="fighter-hud">
+            <div id="p1-name" class="name-tag">PLAYER 1</div>
+            <div class="bar-border"><div id="p1-health" class="health-bar"></div></div>
+            <div class="meter-border"><div id="p1-meter" class="meter-bar"></div></div>
+        </div>
+        <div id="score-board">
+            <div id="logo">KOMBAT OVERLORD</div>
+            <div id="wins-display">0 - 0</div>
+        </div>
+        <div id="p2-hud" class="fighter-hud">
+            <div id="p2-name" class="name-tag">CPU</div>
+            <div class="bar-border"><div id="p2-health" class="health-bar"></div></div>
+            <div class="meter-border"><div id="p2-meter" class="meter-bar"></div></div>
+        </div>
+    </div>
+
+    <div id="screen-container">
+        <!-- Unified Master Select Configuration Menu Screen -->
+        <div id="char-select" class="menu-screen">
+            <div class="screen-title">MATCH LAUNCH SYSTEM</div>
+            <div class="row-layout">
+                <button id="mode-cpu" class="btn selected" onclick="setMatchMode(true)">VERSUS CPU</button>
+                <button id="mode-pvp" class="btn" onclick="setMatchMode(false)">LOCAL 2-PLAYER</button>
+            </div>
+            <div class="row-layout">
+                <button id="stage-void" class="btn selected" onclick="setArenaStage('void')">THE NEON VOID</button>
+                <button id="stage-magma" class="btn" onclick="setArenaStage('magma')">MAGMA CHAMBER</button>
+            </div>
+            <div class="sub-title">CHOOSE CORE FRAME</div>
+            <div class="row-layout">
+                <button class="btn" onclick="launchGame('SCORPION', '#ff6600')">SCORPION</button>
+                <button class="btn" onclick="launchGame('SUB-ZERO', '#00ccff')">SUB-ZERO</button>
+                <button class="btn" onclick="launchGame('REPTILE', '#00ff66')">REPTILE</button>
+            </div>
+        </div>
+
+        <!-- Upgrade Shop Interface Screen -->
+        <div id="shop-screen" class="menu-screen" style="display:none;">
+            <div class="screen-title">FRAME MODIFICATION STATION</div>
+            <div class="sub-title" id="shop-gold-display">GOLD RESERVES: 0G</div>
+            <div class="row-layout">
+                <button class="btn" onclick="buyUpgrade('armor')">HEAVY SHIELD (+10% ARMOR) [50G]</button>
+                <button class="btn" onclick="buyUpgrade('reach')">LIMB EXTENDER (+10% REACH) [50G]</button>
+                <button class="btn" onclick="buyUpgrade('speed')">THRUSTER NODE (+10% SPEED) [50G]</button>
+            </div>
+            <button class="btn" style="border-color:#ffe600;" onclick="exitShopAndContinue()">ENGAGE NEXT ROUND</button>
+        </div>
+
+        <canvas id="gameCanvas" width="1000" height="450"></canvas>
+    </div>
+    
+    <div id="announcer-text">SYSTEM STANDBY</div>
+
+    <div class="instructions">
+        <strong>P1 Mapping:</strong> W (Jump) | A/D (Walk) | S (Block) | F (Punch) | G (Kick) | R (Bolt) | E (EX Ultimate)<br>
+        <strong>P2 Mapping:</strong> Up Arrow (Jump) | Left/Right (Walk) | Down (Block) | Num 1 (Punch) | Num 2 (Kick) | Num 3 (Bolt) | Num 0 (EX)
+    </div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const GRAVITY = 0.6;
+const GROUND_Y = 390;
+let shakeTime = 0;
+let flashTime = 0;
+let freezeFrames = 0;
+let gameStage = "select"; 
+
+// Match parameters
+let p1Wins = 0, cpuWins = 0, currentRound = 1, currentGold = 0;
+let selectedCharName = "PLAYER 1", selectedCharColor = "#ff6600";
+let p2IsAI = true, chosenStage = "void";
+
+// Upgrades Stats Tracking
+const upgrades = { armor: 1.0, reach: 1.0, speed: 1.0 };
+
+// Pure Synth Browser Oscillator Node
+let audioCtx = null;
+function playSound(freq, duration, type="sawtooth", vol=0.12) {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let osc = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    } catch(e) {}
+}
+
+const keys = {};
+window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = 1; if (['w','s','a','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault(); });
+window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = 0; });
+
+function setMatchMode(isCPU) {
+    p2IsAI = isCPU;
+    document.getElementById("mode-cpu").classList.toggle("selected", isCPU);
+    document.getElementById("mode-pvp").classList.toggle("selected", !isCPU);
+    document.getElementById("p2-name").innerText = isCPU ? "CPU" : "PLAYER 2";
+}
+
+function setArenaStage(stageName) {
+    chosenStage = stageName;
+    document.getElementById("stage-void").classList.toggle("selected", stageName === 'void');
+    document.getElementById("stage-magma").classList.toggle("selected", stageName === 'magma');
+}
+
+function launchGame(name, color) {
+    selectedCharName = name; selectedCharColor = color;
+    document.getElementById("p1-name").innerText = name;
+    document.getElementById("char-select").style.display = "none";
+    startNewRound();
+}
+
+function buyUpgrade(type) {
+    if (currentGold >= 50) {
+        currentGold -= 50; upgrades[type] += 0.10;
+        document.getElementById("shop-gold-display").innerText = `GOLD RESERVES: ${currentGold}G`;
+        playSound(440, 0.2, "sine");
+    } else {
+        playSound(150, 0.1, "sawtooth");
+    }
+}
+
+function exitShopAndContinue() {
+    document.getElementById("shop-screen").style.display = "none";
+    startNewRound();
+}
+
+class Projectile {
+    constructor(x, y, dir, color, isEX) {
+        this.x = x; this.y = y; this.vx = dir * (isEX ? 15 : 11);
+        this.color = color; this.isEX = isEX; this.active = true;
+        this.size = isEX ? 25 : 11;
+    }
+    update(opp) {
+        this.x += this.vx;
+        if (this.x < 0 || this.x > canvas.width) this.active = false;
+        let dX = Math.abs(this.x - opp.x), dY = Math.abs(this.y - (opp.y - 50));
+        if (this.active && dX < 35 && dY < 55) {
+            opp.takeDamage(this.isEX ? 25 : 12, this.vx > 0 ? 1 : -1, "missile");
+            this.active = false; shakeTime = this.isEX ? 22 : 12;
+            if (this.isEX) freezeFrames = 5;
+        }
+    }
+    draw() {
+        ctx.save(); ctx.fillStyle = this.color; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+}
+
+class SplashParticle {
+    constructor(x, y, isFinisher = false) {
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * (isFinisher ? 18 : 12);
+        this.vy = (Math.random() - 0.8) * (isFinisher ? 16 : 13);
+        this.radius = Math.random() * 4 + 2; this.alpha = 1;
+        this.floorY = GROUND_Y + (Math.random() * 12); this.isGrounded = false;
+    }
+    update() {
+        if (!this.isGrounded) {
+            this.vy += GRAVITY * 0.6; this.x += this.vx; this.y += this.vy;
+            if (this.y >= this.floorY) { this.y = this.floorY; this.isGrounded = true; this.vx = 0; this.vy = 0; }
+        } else { this.alpha -= 0.004; }
+    }
+    draw() {
+        ctx.save(); ctx.globalAlpha = this.alpha; ctx.fillStyle = chosenStage === 'void' ? "#ff0055" : "#ffcc00"; ctx.beginPath();
+        if (this.isGrounded) ctx.ellipse(this.x, this.y, this.radius * 2.5, this.radius * 0.5, 0, 0, Math.PI * 2);
+        else ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill(); ctx.restore();
+    }
+}
+
+class Fighter {
+    constructor(x, name, color, isP2) {
+        this.x = x; this.y = GROUND_Y; this.vx = 0; this.vy = 0;
+        this.name = name; this.color = color; this.isP2 = isP2;
+        this.health = 100; this.meter = 0; this.airJumps = 0; this.isGrounded = true;
+        this.state = "idle"; this.stateTimer = 0; this.facing = isP2 ? -1 : 1;
+        this.scale = 1.0;
+    }
+    update(opp) {
+        if (this.stateTimer > 0) { this.stateTimer--; if (this.stateTimer <= 0 && this.state !== "dead") this.state = "idle"; }
+        if (this.health > 0 && this.state !== "hit" && gameStage !== "done") {
+            if (!this.isP2) this.handleP1Keyboard(); else if (!p2IsAI) this.handleP2Keyboard(); else this.handleAI(opp);
+        }
+        this.x += this.vx; this.y += this.vy;
+        if (this.y < GROUND_Y) { this.vy += GRAVITY; this.isGrounded = false; }
+        else { this.y = GROUND_Y; this.vy = 0; this.isGrounded = true; this.airJumps = 0; }
+        this.vx *= 0.8;
+        if (this.x < 45) { this.x = 45; if(!this.isGrounded) { this.vx = 11; playSound(140,0.1,"sine"); } }
+        if (this.x > canvas.width - 45) { this.x = canvas.width - 45; if(!this.isGrounded) { this.vx = -11; playSound(140,0.1,"sine"); } }
+        if (this.health > 0 && this.state !== "hit") this.facing = (this.x < opp.x) ? 1 : -1;
+    }
+    handleP1Keyboard() {
+        let baseSpeed = 6 * upgrades.speed;
+        if (this.state === "punch" || this.state === "kick") return;
+        if (keys['a']) this.vx = this.isGrounded ? -baseSpeed : -(baseSpeed + 2);
+        if (keys['d']) this.vx = this.isGrounded ? baseSpeed : (baseSpeed + 2);
+        if (keys['w']) {
+            if (this.isGrounded) { this.vy = -13; this.isGrounded = false; this.airJumps = 1; playSound(200,0.1,"sine"); }
+            else if (this.airJumps === 1) { this.vy = -11; this.airJumps = 2; playSound(250,0.1,"sine"); }
+            keys['w'] = 0;
+        }
+        if (keys['s'] && this.isGrounded) { this.state = "block"; this.vx = 0; return; }
+        else if (this.state === "block" && !keys['s']) this.state = "idle";
+        if (keys['f']) { this.strike("punch", opp); keys['f'] = 0; }
+        if (keys['g']) { this.strike("kick", opp); keys['g'] = 0; }
+        if (keys['r']) { this.shoot(false); keys['r'] = 0; }
+        if (keys['e']) { this.shoot(true); keys['e'] = 0; }
+    }
+    handleP2Keyboard() {
+        if (this.state === "punch" || this.state === "kick") return;
+        if (keys['arrowleft']) this.vx = this.isGrounded ? -6 : -8;
+        if (keys['arrowright']) this.vx = this.isGrounded ? 6 : 8;
+        if (keys['arrowup']) {
+            if (this.isGrounded) { this.vy = -13; this.isGrounded = false; this.airJumps = 1; playSound(200,0.1,"sine"); }
+            else if (this.airJumps === 1) { this.vy = -11; this.airJumps = 2; playSound(250,0.1,"sine"); }
+            keys['arrowup'] = 0;
+        }
+        if (keys['arrowdown'] && this.isGrounded) { this.state = "block"; this.vx = 0; return; }
+        else if (this.state === "block" && !keys['arrowdown']) this.state = "idle";
+        if (keys['1']) { this.strike("punch", p1); keys['1'] = 0; }
+        if (keys['2']) { this.strike("kick", p1); keys['2'] = 0; }
+        if (keys['3']) { this.shoot(false); keys['3'] = 0; }
+        if (keys['0']) { this.shoot(true); keys['0'] = 0; }
+    }
+    handleAI(opp) {
+        if (this.state === "punch" || this.state === "kick" || gameStage === "finish") return;
+        let dist = Math.abs(this.x - opp.x);
+        if ((opp.state === "punch" || opp.state === "kick") && dist < 75 && Math.random() < 0.5) { this.state = "block"; return; }
+        this.state = "block" ? "idle" : this.state;
+        if (dist > 75) { this.vx = (opp.x > this.x) ? 4.5 : -4.5; if (dist > 230 && Math.random() < 0.025) this.shoot(false); }
+        else { if (Math.random() < 0.15) this.strike(Math.random() > 0.5 ? "punch" : "kick", opp); }
+    }
+    strike(type, target) {
+        this.state = type; this.stateTimer = 12;
+        let modifier = this.isP2 ? 1.0 : upgrades.reach;
+        let range = type === "kick" ? (75 * modifier) : (55 * modifier);
+        let dmg = type === "kick" ? 14 : 7;
+        let dX = Math.abs(this.x - target.x), dY = Math.abs(this.y - target.y);
+        let validDirection = (this.facing === 1 && target.x > this.x) || (this.facing === -1 && target.x < this.x);
+        playSound(type === "kick" ? 180 : 220, 0.1, "triangle");
+        if (dX < range && dY < 55 && validDirection) target.takeDamage(dmg, this.facing, type);
+    }
+    shoot(isEX) {
+        if (isEX && this.meter < 100) return; if (isEX) this.meter = 0;
+        this.state = "punch"; this.stateTimer = 14;
+        projectiles.push(new Projectile(this.x + (30 * this.facing), this.y - 55, this.facing, isEX ? "#ffcc00" : this.color, isEX));
+        playSound(isEX ? 550 : 380, 0.2, "sawtooth");
+    }
+    takeDamage(dmg, pushDir, source) {
+        if (this.health <= 0) return;
+        if (this.state === "block" && source !== "missile") { this.health -= Math.floor(dmg * 0.1); this.vx = pushDir * 2.5; playSound(600,0.05,"sine"); return; }
+        
+        let defenseModifier = this.isP2 ? 1.0 : (2.0 - upgrades.armor);
+        this.health = Math.max(0, this.health - Math.floor(dmg * defenseModifier));
+        spawnSplashDrop(this.x, this.y - 55, source === "kick" ? 24 : 14, false); playSound(90, 0.15, "sawtooth", 0.3);
+        if (source === "kick" || source === "missile") flashTime = 4;
+        if (this.health <= 0) { this.state = "dead"; this.vx = pushDir * 5; freezeFrames = 8; triggerFinishPhase(); return; }
+        this.state = "hit"; this.stateTimer = 10; this.vx = pushDir * 7;
+        if (!this.isGrounded) { this.vy = -4.5; this.vx = pushDir * 8.5; }
+    }
+    draw() {
+        ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.ellipse(this.x, GROUND_Y + 2, 25, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = this.color; ctx.lineWidth = 6; ctx.lineCap = "round";
+        let hY = this.y - 80, cY = this.y - 50, pY = this.y - 30;
+        ctx.beginPath(); ctx.arc(this.x, hY, 11, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(this.x, hY + 11); ctx.lineTo(this.x, pY); ctx.stroke();
+        ctx.beginPath();
+        if (!this.isGrounded) { ctx.moveTo(this.x, pY); ctx.lineTo(this.x - 14, this.y - 14); ctx.moveTo(this.x, pY); ctx.lineTo(this.x + 14, this.y - 14); }
+        else if (this.state === "kick") { ctx.moveTo(this.x, pY); ctx.lineTo(this.x - 12 * this.facing, this.y); ctx.moveTo(this.x, pY); ctx.lineTo(this.x + (58 * (this.isP2 ? 1.0 : upgrades.reach)) * this.facing, cY - 12); }
+        else { ctx.moveTo(this.x, pY); ctx.lineTo(this.x - 16 * this.facing, this.y); ctx.moveTo(this.x, pY); ctx.lineTo(this.x + 16 * this.facing, this.y); }
+        ctx.stroke(); ctx.beginPath();
+        if (this.state === "punch") { ctx.moveTo(this.x, cY); ctx.lineTo(this.x + (50 * (this.isP2 ? 1.0 : upgrades.reach)) * this.facing, cY); }
+        else if (this.state === "block") { ctx.moveTo(this.x, cY); ctx.lineTo(this.x + 15 * this.facing, hY - 5); }
+        else { ctx.moveTo(this.x, cY); ctx.lineTo(this.x + 12 * this.facing, cY + 12); }
+        ctx.stroke(); ctx.restore();
+    }
+}
+
+let p1 = null, opp = null, projectiles = [], splatters = [];
+
+function startNewRound() {
+    p1 = new Fighter(250, selectedCharName, selectedCharColor, false);
+    opp = new Fighter(750, p2IsAI ? "CPU REAPER" : "PLAYER 2", p2IsAI ? "#3a3a4a" : "#4a00ff", true);
+    projectiles = []; splatters = [];
+    document.getElementById("announcer-text").innerText = `ROUND ${currentRound}... FIGHT!`;
+    document.getElementById("wins-display").innerText = `${p1Wins} - ${cpuWins}`;
+    gameStage = "fight"; playSound(320, 0.3, "sawtooth");
+}
+
+function spawnSplashDrop(x, y, count, isFinisher) { for (let i = 0; i < count; i++) splatters.push(new SplashParticle(x, y, isFinisher)); }
+function triggerFinishPhase() { gameStage = "finish"; document.getElementById("announcer-text").innerHTML = "FINISH HIM!<br><span style='font-size:18px;color:#ff0055;'>PRESS ANY ATTACK VECTOR FOR FINISHER</span>"; playSound(80, 0.6, "sawtooth", 0.4); }
+
+function executeExplosiveFatality() {
+    gameStage = "done"; shakeTime = 35; flashTime = 12;
+    if (p1.health <= 0) { cpuWins++; document.getElementById("announcer-text").innerHTML = `${opp.name} WINS!`; }
+    else { p1Wins++; currentGold += 100; document.getElementById("announcer-text").innerHTML = `${p1.name} WINS! (+100G)`; }
+    spawnSplashDrop(opp.health <= 0 ? opp.x : p1.x, (opp.health <= 0 ? opp.y : p1.y) - 50, 200, true);
+    playSound(50, 0.8, "sawtooth", 0.5); currentRound++;
+    
+    setTimeout(() => {
+        if (p1.health > 0) {
+            document.getElementById("shop-gold-display").innerText = `GOLD RESERVES: ${currentGold}G`;
+            document.getElementById("shop-screen").style.display = "flex";
+        } else { startNewRound(); }
+    }, 3000);
+}
+
+function drawStageBackground() {
+    let linesColor = chosenStage === 'void' ? "#101026" : "#2d0b04";
+    let horizonColor = chosenStage === 'void' ? "#550022" : "#993300";
+    ctx.strokeStyle = linesColor; ctx.lineWidth = 3;
+    for (let i = 0; i <= 12; i++) { let x = (canvas.width / 12) * i; ctx.beginPath(); ctx.moveTo(x, GROUND_Y); ctx.lineTo(x + (x - canvas.width/2) * 1.6, canvas.height); ctx.stroke(); }
+    ctx.strokeStyle = horizonColor; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(canvas.width, GROUND_Y); ctx.stroke();
+}
+
+function updateHUD() {
+    if (!p1 || !opp) return;
+    document.getElementById("p1-health").style.transform = `scaleX(${p1.health / 100})`;
+    document.getElementById("p2-health").style.transform = `scaleX(${opp.health / 100})`;
+    document.getElementById("p1-meter").style.width = p1.meter + "%";
+    document.getElementById("p2-meter").style.width = opp.meter + "%";
+}
+
+function engineLoop() {
+    ctx.save(); if (freezeFrames > 0) { freezeFrames--; ctx.restore(); requestAnimationFrame(engineLoop); return; }
+    if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*9, (Math.random()-0.5)*9); shakeTime--; }
+    ctx.clearRect(0, 0, canvas.width, canvas.height); drawStageBackground();
+    if (p1 && opp) {
+        let p1Striking = keys['f'] || keys['g'] || keys['r'] || keys['e'];
+        let p2Striking = keys['1'] || keys['2'] || keys['3'] || keys['0'];
+        if (gameStage === "finish" && (p1Striking || p2Striking)) executeExplosiveFatality();
+        p1.update(opp); opp.update(p1);
+        projectiles = projectiles.filter(p => p.active); projectiles.forEach(p => { p.update(p.vx > 0 ? opp : p1); p.draw(); });
+        splatters = splatters.filter(s => s.alpha > 0); splatters.forEach(s => { s.update(); s.draw(); });
+        p1.draw(); opp.draw();
+    }
+    if (flashTime > 0) { ctx.fillStyle = `rgba(255, 0, 85, ${flashTime * 0.06})`; ctx.fillRect(0, 0, canvas.width, canvas.height); flashTime--; }
+    ctx.restore(); updateHUD(); requestAnimationFrame(engineLoop);
+}
+engineLoop();
+</script>
+</body>
+</html>
